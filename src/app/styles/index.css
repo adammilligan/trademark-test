@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: #020617;
+  color: #e2e8f0;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+.prose pre {
+  background-color: #0f172a;
+  border-radius: 0.75rem;
+  border: 1px solid #1e293b;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+}
+
+.prose code {
+  color: #a5b4fc;
+}
+
