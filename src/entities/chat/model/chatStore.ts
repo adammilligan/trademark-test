@@ -9,11 +9,7 @@ import {
   STREAM_TARGET_WORDS_MAX,
   STREAM_TARGET_WORDS_MIN,
 } from '@shared/config/chatConfig'
-import {
-  createTextChunkGenerator,
-  generateTextWithCode,
-  TTextChunkGenerator,
-} from '@shared/lib/textGenerator'
+import { createTextChunkGenerator, TTextChunkGenerator } from '@shared/lib/textGenerator'
 
 import { TChatMessage, TMessageRole } from '@entities/message/model/types'
 
@@ -75,10 +71,6 @@ const pickInstantWords = (): number => {
   const range = INSTANT_TARGET_WORDS_MAX - INSTANT_TARGET_WORDS_MIN
   const randomOffset = Math.floor(Math.random() * (range + 1))
   return INSTANT_TARGET_WORDS_MIN + randomOffset
-}
-
-const buildInstantText = (wordsCount: number): string => {
-  return generateTextWithCode(wordsCount)
 }
 
 export const useChatStore = create<TChatState>((set, get) => {
@@ -226,6 +218,54 @@ export const useChatStore = create<TChatState>((set, get) => {
     })
   }
 
+  const startStreamSession = (targetWords: number, chunkSize: number) => {
+    if (get().isGenerating) {
+      stopStream()
+    }
+
+    resetRuntime()
+    runtime.targetWords = targetWords
+    runtime.textGenerator = createTextChunkGenerator(targetWords)
+
+    const assistantMessage = buildAssistantMessage()
+    runtime.streamingMessageId = assistantMessage.id
+
+    set((state) => {
+      const nextMessages = [...state.messages, assistantMessage]
+      logMessages('startStreamSession', nextMessages)
+
+      return {
+        messages: nextMessages,
+        isGenerating: true,
+        isAutoScroll: true,
+        generatedWords: 0,
+        targetWords: runtime.targetWords,
+      }
+    })
+
+    runtime.intervalId = window.setInterval(() => {
+      const generator = runtime.textGenerator
+      if (!generator) {
+        stopStream()
+        return
+      }
+
+      const next = generator.nextChunk(chunkSize)
+      if (!next) {
+        stopStream()
+        return
+      }
+
+      runtime.wordsGenerated += next.words
+      runtime.bufferedChunk = `${runtime.bufferedChunk}${next.text}`
+      scheduleFlush()
+
+      if (runtime.wordsGenerated >= runtime.targetWords) {
+        stopStream()
+      }
+    }, STREAM_DELAY_MS)
+  }
+
   return {
     messages: [],
     isGenerating: false,
@@ -252,13 +292,11 @@ export const useChatStore = create<TChatState>((set, get) => {
       }
 
       const instantWords = pickInstantWords()
-      const assistantText = buildInstantText(instantWords)
 
       set((state) => {
         const nextMessages: TChatMessage[] = [
           ...state.messages,
           buildMessage('user', trimmed, false),
-          buildMessage('assistant', assistantText, false),
         ]
 
         logMessages('instantReply', nextMessages)
@@ -268,52 +306,12 @@ export const useChatStore = create<TChatState>((set, get) => {
           isAutoScroll: true,
         }
       })
+
+      startStreamSession(instantWords, 1)
     },
     startAssistantStream: () => {
-      if (get().isGenerating) {
-        stopStream()
-      }
-
-      resetRuntime()
-
-      const assistantMessage = buildAssistantMessage()
-      runtime.streamingMessageId = assistantMessage.id
-      runtime.textGenerator = createTextChunkGenerator(runtime.targetWords)
-
-      set((state) => {
-        const nextMessages = [...state.messages, assistantMessage]
-        logMessages('startAssistantStream', nextMessages)
-
-        return {
-          messages: nextMessages,
-          isGenerating: true,
-          isAutoScroll: true,
-          generatedWords: 0,
-          targetWords: runtime.targetWords,
-        }
-      })
-
-      runtime.intervalId = window.setInterval(() => {
-        const generator = runtime.textGenerator
-        if (!generator) {
-          stopStream()
-          return
-        }
-
-        const next = generator.nextChunk(STREAM_CHUNK_SIZE)
-        if (!next) {
-          stopStream()
-          return
-        }
-
-        runtime.wordsGenerated += next.words
-        runtime.bufferedChunk = `${runtime.bufferedChunk}${next.text}`
-        scheduleFlush()
-
-        if (runtime.wordsGenerated >= runtime.targetWords) {
-          stopStream()
-        }
-      }, STREAM_DELAY_MS)
+      const target = pickTargetWords()
+      startStreamSession(target, STREAM_CHUNK_SIZE)
     },
     stopGeneration: () => {
       stopStream()
