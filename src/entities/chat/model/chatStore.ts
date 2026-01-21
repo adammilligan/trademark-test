@@ -9,7 +9,12 @@ import {
   STREAM_TARGET_WORDS_MAX,
   STREAM_TARGET_WORDS_MIN,
 } from '@shared/config/chatConfig'
-import { buildWordChunk, seedHistorySamples } from '@shared/lib/loremGenerator'
+import {
+  createInitialHistorySamples,
+  createTextChunkGenerator,
+  generateTextWithCode,
+  TTextChunkGenerator,
+} from '@shared/lib/textGenerator'
 
 import { TChatMessage, TMessageRole } from '@entities/message/model/types'
 
@@ -32,9 +37,9 @@ type TGenerationRuntime = {
   bufferedChunk: string
   isFlushScheduled: boolean
   wordsGenerated: number
-  nextWordIndex: number
   targetWords: number
   streamingMessageId: string | null
+  textGenerator: TTextChunkGenerator | null
 }
 
 const runtime: TGenerationRuntime = {
@@ -42,21 +47,25 @@ const runtime: TGenerationRuntime = {
   bufferedChunk: '',
   isFlushScheduled: false,
   wordsGenerated: 0,
-  nextWordIndex: 0,
   targetWords: STREAM_TARGET_WORDS_MAX,
   streamingMessageId: null,
+  textGenerator: null,
 }
 
 const createInitialMessages = (): TChatMessage[] => {
-  const samples = seedHistorySamples(MAX_HISTORY_ITEMS)
+  const samples = createInitialHistorySamples(MAX_HISTORY_ITEMS)
 
-  return samples.map((content, index) => ({
-    id: crypto.randomUUID(),
-    role: index % 2 === 0 ? ('user' as TMessageRole) : ('assistant' as TMessageRole),
-    content,
-    isStreaming: false,
-    createdAt: Date.now() - (samples.length - index) * 60_000,
-  }))
+  return samples.map((content, index) => {
+    const role: TMessageRole = index % 2 === 0 ? 'user' : 'assistant'
+
+    return {
+      id: crypto.randomUUID(),
+      role,
+      content,
+      isStreaming: false,
+      createdAt: Date.now() - (samples.length - index) * 60_000,
+    }
+  })
 }
 
 const buildMessage = (
@@ -86,16 +95,7 @@ const pickInstantWords = (): number => {
 }
 
 const buildInstantText = (wordsCount: number): string => {
-  const chunks: string[] = []
-  let nextIndex = 0
-
-  for (let remaining = wordsCount; remaining > 0; remaining -= 1) {
-    const word = buildWordChunk(1, nextIndex)
-    nextIndex += 1
-    chunks.push(word)
-  }
-
-  return chunks.join(' ')
+  return generateTextWithCode(wordsCount)
 }
 
 export const useChatStore = create<TChatState>((set, get) => {
@@ -176,9 +176,9 @@ export const useChatStore = create<TChatState>((set, get) => {
     runtime.bufferedChunk = ''
     runtime.isFlushScheduled = false
     runtime.wordsGenerated = 0
-    runtime.nextWordIndex = 0
     runtime.targetWords = pickTargetWords()
     runtime.streamingMessageId = null
+    runtime.textGenerator = null
   }
 
   const markStreamStopped = () => {
@@ -295,6 +295,7 @@ export const useChatStore = create<TChatState>((set, get) => {
 
       const assistantMessage = buildAssistantMessage()
       runtime.streamingMessageId = assistantMessage.id
+      runtime.textGenerator = createTextChunkGenerator(runtime.targetWords)
 
       set((state) => {
         const nextMessages = [...state.messages, assistantMessage]
@@ -310,11 +311,20 @@ export const useChatStore = create<TChatState>((set, get) => {
       })
 
       runtime.intervalId = window.setInterval(() => {
-        const chunk = buildWordChunk(STREAM_CHUNK_SIZE, runtime.nextWordIndex)
-        runtime.nextWordIndex += STREAM_CHUNK_SIZE
-        runtime.wordsGenerated += STREAM_CHUNK_SIZE
+        const generator = runtime.textGenerator
+        if (!generator) {
+          stopStream()
+          return
+        }
 
-        runtime.bufferedChunk = `${runtime.bufferedChunk} ${chunk}`.trim()
+        const next = generator.nextChunk(STREAM_CHUNK_SIZE)
+        if (!next) {
+          stopStream()
+          return
+        }
+
+        runtime.wordsGenerated += next.words
+        runtime.bufferedChunk = `${runtime.bufferedChunk}${next.text}`
         scheduleFlush()
 
         if (runtime.wordsGenerated >= runtime.targetWords) {
@@ -324,8 +334,12 @@ export const useChatStore = create<TChatState>((set, get) => {
     },
     stopGeneration: () => {
       stopStream()
+      logMessages('stopGeneration', [...get().messages])
     },
-    toggleAutoScroll: (value: boolean) => set({ isAutoScroll: value }),
+    toggleAutoScroll: (value: boolean) => {
+      set({ isAutoScroll: value })
+      logMessages('toggleAutoScroll', [...get().messages])
+    },
     clearHistory: () => {
       clearHistoryInternal()
     },
