@@ -1,10 +1,5 @@
 import { useMemo } from 'react'
 
-import {
-  STREAM_TARGET_WORDS_MAX,
-  STREAM_TARGET_WORDS_MIN,
-} from '@shared/config/chatConfig'
-
 import { useChatStore } from '@entities/chat/model/chatStore'
 
 const formatProgress = (value: number, target: number): string => {
@@ -19,11 +14,8 @@ export const GenerationPanel = () => {
   const isGenerating = useChatStore((state) => state.isGenerating)
   const generatedWords = useChatStore((state) => state.generatedWords)
   const targetWords = useChatStore((state) => state.targetWords)
-  const isAutoScroll = useChatStore((state) => state.isAutoScroll)
-  const startAssistantStream = useChatStore((state) => state.startAssistantStream)
+  const startGeneration = useChatStore((state) => state.startGeneration)
   const stopGeneration = useChatStore((state) => state.stopGeneration)
-  const toggleAutoScroll = useChatStore((state) => state.toggleAutoScroll)
-  const clearHistory = useChatStore((state) => state.clearHistory)
 
   const progressText = useMemo(
     () => formatProgress(generatedWords, targetWords),
@@ -37,7 +29,7 @@ export const GenerationPanel = () => {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={startAssistantStream}
+            onClick={startGeneration}
             className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:opacity-50"
             disabled={isGenerating}
           >
@@ -51,22 +43,6 @@ export const GenerationPanel = () => {
           >
             Stop Generating
           </button>
-          <button
-            type="button"
-            onClick={clearHistory}
-            className="rounded-lg border border-red-500/70 px-4 py-2 text-sm font-semibold text-red-200 transition hover:border-red-400 hover:text-red-100"
-          >
-            Очистить историю
-          </button>
-          <label className="ml-auto flex cursor-pointer items-center gap-2 text-xs text-slate-300">
-            <input
-              type="checkbox"
-              checked={isAutoScroll}
-              onChange={(event) => toggleAutoScroll(event.target.checked)}
-              className="h-4 w-4 accent-emerald-500"
-            />
-            Автоскролл
-          </label>
         </div>
       </div>
       <div className="flex flex-col justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950/60 p-4">

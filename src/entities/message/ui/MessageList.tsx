@@ -1,7 +1,5 @@
 import { useEffect, useRef } from 'react'
 
-import { useVirtualizer } from '@tanstack/react-virtual'
-
 import { AUTO_SCROLL_OFFSET } from '@shared/config/chatConfig'
 import { isNearBottom } from '@shared/lib/scroll'
 
@@ -15,49 +13,35 @@ export const MessageList = () => {
   const toggleAutoScroll = useChatStore((state) => state.toggleAutoScroll)
   const generatedWords = useChatStore((state) => state.generatedWords)
 
-  const rowVirtualizer = useVirtualizer({
-    count: messages.length,
-    getScrollElement: () => scrollParentRef.current,
-    getItemKey: (index) => messages[index]?.id ?? index,
-    estimateSize: () => 140,
-    measureElement: (element) => element.getBoundingClientRect().height,
-    overscan: 6,
-  })
+  useEffect(() => {
+    if (!isAutoScroll) {
+      return
+    }
 
-  const virtualItems = rowVirtualizer.getVirtualItems()
+    const element = scrollParentRef.current
+    if (!element) {
+      return
+    }
+
+    requestAnimationFrame(() => {
+      element.scrollTop = element.scrollHeight
+    })
+  }, [messages.length, isAutoScroll])
 
   useEffect(() => {
     if (!isAutoScroll) {
       return
     }
 
-    rowVirtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
-  }, [messages.length, isAutoScroll, rowVirtualizer])
-
-  useEffect(() => {
-    if (!isAutoScroll) {
+    const element = scrollParentRef.current
+    if (!element) {
       return
     }
 
-    rowVirtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
-  }, [generatedWords, isAutoScroll, messages.length, rowVirtualizer])
-
-  useEffect(() => {
-    // При добавлении/удалении сообщений заново измеряем элементы и скроллим к низу,
-    // чтобы новое сообщение не «прилипало» к верху списка.
-    rowVirtualizer.measure()
-    if (isAutoScroll) {
-      requestAnimationFrame(() => {
-        rowVirtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
-      })
-    }
-  }, [messages.length, isAutoScroll, rowVirtualizer])
-
-  useEffect(() => {
-    // Важно для стриминга: высота последнего сообщения растёт, и виртуализатор
-    // должен переизмерять элементы, иначе новые сообщения могут «наезжать».
-    rowVirtualizer.measure()
-  }, [generatedWords, rowVirtualizer])
+    requestAnimationFrame(() => {
+      element.scrollTop = element.scrollHeight
+    })
+  }, [generatedWords, isAutoScroll])
 
   const handleScroll = () => {
     const element = scrollParentRef.current
@@ -70,7 +54,10 @@ export const MessageList = () => {
   }
 
   const handleScrollToBottom = () => {
-    rowVirtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
+    const element = scrollParentRef.current
+    if (element) {
+      element.scrollTop = element.scrollHeight
+    }
     toggleAutoScroll(true)
   }
 
@@ -81,32 +68,10 @@ export const MessageList = () => {
         onScroll={handleScroll}
         className="h-full overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/60 px-2 py-4 pb-10"
       >
-        <div
-          style={{
-            height: `${rowVirtualizer.getTotalSize()}px`,
-            position: 'relative',
-            width: '100%',
-          }}
-        >
-          {virtualItems.map((virtualRow) => {
-            const message = messages[virtualRow.index]
-
-            return (
-              <div
-                key={message.id}
-                data-index={virtualRow.index}
-                ref={rowVirtualizer.measureElement}
-                className="absolute left-0 top-0 w-full px-2"
-                style={{
-                  height: `${virtualRow.size}px`,
-                  transform: `translateY(${virtualRow.start}px)`,
-                  width: '100%',
-                }}
-              >
-                <MessageItem message={message} />
-              </div>
-            )
-          })}
+        <div className="flex flex-col gap-3 px-2">
+          {messages.map((message) => (
+            <MessageItem key={message.id} message={message} />
+          ))}
         </div>
       </div>
 
