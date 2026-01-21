@@ -11,7 +11,7 @@ import {
 } from '@shared/config/chatConfig'
 import { buildWordChunk, seedHistorySamples } from '@shared/lib/loremGenerator'
 
-import { TChatMessage } from '@entities/message/model/types'
+import { TChatMessage, TMessageRole } from '@entities/message/model/types'
 
 type TChatState = {
   messages: TChatMessage[]
@@ -52,20 +52,26 @@ const createInitialMessages = (): TChatMessage[] => {
 
   return samples.map((content, index) => ({
     id: crypto.randomUUID(),
-    role: index % 2 === 0 ? 'user' : 'assistant',
+    role: index % 2 === 0 ? ('user' as TMessageRole) : ('assistant' as TMessageRole),
     content,
     isStreaming: false,
     createdAt: Date.now() - (samples.length - index) * 60_000,
   }))
 }
 
-const buildAssistantMessage = (): TChatMessage => ({
+const buildMessage = (
+  role: TMessageRole,
+  content: string,
+  isStreaming: boolean,
+): TChatMessage => ({
   id: crypto.randomUUID(),
-  role: 'assistant',
-  content: '',
-  isStreaming: true,
+  role,
+  content,
+  isStreaming,
   createdAt: Date.now(),
 })
+
+const buildAssistantMessage = (): TChatMessage => buildMessage('assistant', '', true)
 
 const pickTargetWords = (): number => {
   const range = STREAM_TARGET_WORDS_MAX - STREAM_TARGET_WORDS_MIN
@@ -93,6 +99,10 @@ const buildInstantText = (wordsCount: number): string => {
 }
 
 export const useChatStore = create<TChatState>((set, get) => {
+  const logMessages = (action: string, messages: TChatMessage[]) => {
+    console.log('[chatStore]', action, { count: messages.length, messages })
+  }
+
   const flushBufferedChunk = () => {
     if (runtime.bufferedChunk === '') {
       return
@@ -132,6 +142,8 @@ export const useChatStore = create<TChatState>((set, get) => {
       }
 
       nextMessages[messageIndex] = updatedMessage
+
+      logMessages('flushBufferedChunk', nextMessages)
 
       return {
         messages: nextMessages,
@@ -197,6 +209,8 @@ export const useChatStore = create<TChatState>((set, get) => {
 
       nextMessages[messageIndex] = { ...message, isStreaming: false }
 
+      logMessages('markStreamStopped', nextMessages)
+
       return { messages: nextMessages }
     })
   }
@@ -210,6 +224,7 @@ export const useChatStore = create<TChatState>((set, get) => {
       generatedWords: 0,
       targetWords: runtime.targetWords,
     })
+    logMessages('clearHistory', [])
   }
 
   const stopStream = () => {
@@ -242,17 +257,9 @@ export const useChatStore = create<TChatState>((set, get) => {
       }
 
       set((state) => ({
-        messages: [
-          ...state.messages,
-          {
-            id: crypto.randomUUID(),
-            role: 'user',
-            content: trimmed,
-            isStreaming: false,
-            createdAt: Date.now(),
-          },
-        ],
+        messages: [...state.messages, buildMessage('user', trimmed, false)],
       }))
+      logMessages('addUserMessage', [...get().messages])
     },
     addUserMessageAndInstantReply: (text: string) => {
       const trimmed = text.trim()
@@ -264,26 +271,20 @@ export const useChatStore = create<TChatState>((set, get) => {
       const instantWords = pickInstantWords()
       const assistantText = buildInstantText(instantWords)
 
-      set((state) => ({
-        messages: [
+      set((state) => {
+        const nextMessages: TChatMessage[] = [
           ...state.messages,
-          {
-            id: crypto.randomUUID(),
-            role: 'user',
-            content: trimmed,
-            isStreaming: false,
-            createdAt: Date.now(),
-          },
-          {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: assistantText,
-            isStreaming: false,
-            createdAt: Date.now(),
-          },
-        ],
-        isAutoScroll: true,
-      }))
+          buildMessage('user', trimmed, false),
+          buildMessage('assistant', assistantText, false),
+        ]
+
+        logMessages('instantReply', nextMessages)
+
+        return {
+          messages: nextMessages,
+          isAutoScroll: true,
+        }
+      })
     },
     startAssistantStream: () => {
       if (get().isGenerating) {
@@ -295,13 +296,18 @@ export const useChatStore = create<TChatState>((set, get) => {
       const assistantMessage = buildAssistantMessage()
       runtime.streamingMessageId = assistantMessage.id
 
-      set((state) => ({
-        messages: [...state.messages, assistantMessage],
-        isGenerating: true,
-        isAutoScroll: true,
-        generatedWords: 0,
-        targetWords: runtime.targetWords,
-      }))
+      set((state) => {
+        const nextMessages = [...state.messages, assistantMessage]
+        logMessages('startAssistantStream', nextMessages)
+
+        return {
+          messages: nextMessages,
+          isGenerating: true,
+          isAutoScroll: true,
+          generatedWords: 0,
+          targetWords: runtime.targetWords,
+        }
+      })
 
       runtime.intervalId = window.setInterval(() => {
         const chunk = buildWordChunk(STREAM_CHUNK_SIZE, runtime.nextWordIndex)
