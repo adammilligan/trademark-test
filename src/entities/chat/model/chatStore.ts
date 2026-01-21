@@ -10,7 +10,6 @@ import {
   STREAM_TARGET_WORDS_MIN,
 } from '@shared/config/chatConfig'
 import {
-  createInitialHistorySamples,
   createTextChunkGenerator,
   generateTextWithCode,
   TTextChunkGenerator,
@@ -50,22 +49,6 @@ const runtime: TGenerationRuntime = {
   targetWords: STREAM_TARGET_WORDS_MAX,
   streamingMessageId: null,
   textGenerator: null,
-}
-
-const createInitialMessages = (): TChatMessage[] => {
-  const samples = createInitialHistorySamples(MAX_HISTORY_ITEMS)
-
-  return samples.map((content, index) => {
-    const role: TMessageRole = index % 2 === 0 ? 'user' : 'assistant'
-
-    return {
-      id: crypto.randomUUID(),
-      role,
-      content,
-      isStreaming: false,
-      createdAt: Date.now() - (samples.length - index) * 60_000,
-    }
-  })
 }
 
 const buildMessage = (
@@ -244,7 +227,7 @@ export const useChatStore = create<TChatState>((set, get) => {
   }
 
   return {
-    messages: createInitialMessages(),
+    messages: [],
     isGenerating: false,
     isAutoScroll: true,
     generatedWords: 0,
