@@ -1,3 +1,7 @@
+/**
+ * Выбирает случайный элемент из массива
+ * @param arr - массив элементов
+ */
 const random = <T,>(arr: readonly T[]): T => {
   const index = Math.floor(Math.random() * arr.length)
   return arr[index]
@@ -86,6 +90,10 @@ const countWords = (text: string): number => {
   return trimmed.split(/\s+/).length
 }
 
+/**
+ * Генерирует осмысленный абзац текста с использованием случайных слов из словарей
+ * Иногда добавляет маркированный список для разнообразия
+ */
 const buildParagraph = (): string => {
   const topic = random(TOPICS)
 
@@ -103,11 +111,19 @@ const buildParagraph = (): string => {
   return paragraph
 }
 
+/**
+ * Генерирует блок кода в формате Markdown
+ */
 const buildCodeBlock = (): string => {
   const code = random(CODE_SNIPPETS)
   return `\n\`\`\`javascript\n${code}\n\`\`\`\n`
 }
 
+/**
+ * Генерирует текст заданной длины с абзацами, кодом и Markdown-разметкой
+ * Используется для создания осмысленного контента вместо Lorem Ipsum
+ * @param wordCount - целевое количество слов (по умолчанию 10000)
+ */
 export const generateTextWithCode = (wordCount = 10_000): string => {
   const result: string[] = []
   let wordsGenerated = 0
@@ -127,6 +143,10 @@ export const generateTextWithCode = (wordCount = 10_000): string => {
   return result.join('\n\n')
 }
 
+/**
+ * Создаёт массив примеров текста для начальной истории чата
+ * @param count - количество примеров для генерации
+ */
 export const createInitialHistorySamples = (count: number): string[] => {
   const samples: string[] = []
 
@@ -138,10 +158,19 @@ export const createInitialHistorySamples = (count: number): string[] => {
   return samples
 }
 
+/**
+ * Генератор чанков текста для потоковой генерации
+ * Позволяет получать текст порциями заданного размера
+ */
 export type TTextChunkGenerator = {
   nextChunk: (wordBudget: number) => { text: string; words: number } | null
 }
 
+/**
+ * Создаёт генератор чанков текста для потоковой генерации
+ * Генерирует текст порциями заданного размера, чередуя абзацы и блоки кода
+ * @param targetWords - целевое общее количество слов для генерации
+ */
 export const createTextChunkGenerator = (targetWords: number): TTextChunkGenerator => {
   let currentParagraphWords: string[] = []
   let paragraphWordIndex = 0

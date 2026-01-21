@@ -6,6 +6,11 @@ import { isNearBottom } from '@shared/lib/scroll'
 import { useChatStore } from '@entities/chat/model/chatStore'
 import { MessageItem } from '@entities/message/ui/MessageItem'
 
+/**
+ * Компонент списка сообщений чата с поддержкой автоскролла
+ * Автоматически прокручивает к последнему сообщению при генерации текста
+ * Показывает кнопку "Вниз" при ручной прокрутке пользователем вверх
+ */
 export const MessageList = () => {
   const scrollParentRef = useRef<HTMLDivElement | null>(null)
   const messages = useChatStore((state) => state.messages)
@@ -43,6 +48,10 @@ export const MessageList = () => {
     })
   }, [generatedWords, isAutoScroll])
 
+  /**
+   * Обработчик прокрутки списка сообщений
+   * Определяет, находится ли пользователь внизу списка, и управляет автоскроллом
+   */
   const handleScroll = () => {
     const element = scrollParentRef.current
     if (!element) {
@@ -53,6 +62,9 @@ export const MessageList = () => {
     toggleAutoScroll(isAtBottom)
   }
 
+  /**
+   * Прокручивает список сообщений в самый низ и включает автоскролл
+   */
   const handleScrollToBottom = () => {
     const element = scrollParentRef.current
     if (element) {

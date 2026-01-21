@@ -2,6 +2,12 @@ import { FormEvent, useEffect, useRef, useState } from 'react'
 
 import { useChatStore } from '@entities/chat/model/chatStore'
 
+/**
+ * Компонент формы ввода сообщения пользователя
+ * Поддерживает разные UI для мобильной и десктопной версий
+ * На мобильных: компактная однострочная форма с автоматическим ростом textarea
+ * На десктопе: полноценный textarea с поддержкой многострочного ввода
+ */
 export const MessageInput = () => {
   const [value, setValue] = useState('')
   const mobileTextareaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -19,6 +25,11 @@ export const MessageInput = () => {
     textarea.style.height = `${Math.min(scrollHeight, maxHeight)}px`
   }, [value])
 
+  /**
+   * Обработчик нажатия клавиш для мобильного textarea
+   * Enter отправляет сообщение, Shift+Enter добавляет перенос строки
+   * @param event - событие клавиатуры
+   */
   const handleMobileTextareaKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
@@ -32,6 +43,11 @@ export const MessageInput = () => {
     }
   }
 
+  /**
+   * Обработчик нажатия клавиш для десктопного textarea
+   * Enter отправляет сообщение, Ctrl/Cmd+Enter добавляет перенос строки
+   * @param event - событие клавиатуры
+   */
   const handleTextareaKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key !== 'Enter') {
       return
@@ -67,6 +83,10 @@ export const MessageInput = () => {
     setValue('')
   }
 
+  /**
+   * Обработчик отправки формы
+   * @param event - событие формы
+   */
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     addUserMessage(value)

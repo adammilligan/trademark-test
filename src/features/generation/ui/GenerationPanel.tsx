@@ -2,6 +2,11 @@ import { useMemo } from 'react'
 
 import { useChatStore } from '@entities/chat/model/chatStore'
 
+/**
+ * Форматирует прогресс генерации в процентное значение
+ * @param value - текущее количество сгенерированных слов
+ * @param target - целевое количество слов
+ */
 const formatProgress = (value: number, target: number): string => {
   if (target === 0) {
     return '0%'
@@ -10,6 +15,10 @@ const formatProgress = (value: number, target: number): string => {
   return `${percent}%`
 }
 
+/**
+ * Панель управления потоковой генерацией текста
+ * Отображает кнопки запуска/остановки генерации и прогресс выполнения
+ */
 export const GenerationPanel = () => {
   const isGenerating = useChatStore((state) => state.isGenerating)
   const generatedWords = useChatStore((state) => state.generatedWords)

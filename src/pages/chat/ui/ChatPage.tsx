@@ -1,5 +1,9 @@
 import { ChatWidget } from '@widgets/chat/ui/ChatWidget'
 
+/**
+ * Страница чата с потоковой генерацией текста
+ * Отображает заголовок и основной виджет чата
+ */
 export const ChatPage = () => (
   <div className="mx-auto flex h-full max-w-6xl flex-col gap-4 px-3 py-3 md:gap-6 md:px-4 md:py-6">
     <header className="shrink-0 space-y-1 md:space-y-2">

@@ -5,6 +5,9 @@ import remarkGfm from 'remark-gfm'
 
 import { TChatMessage } from '@entities/message/model/types'
 
+/**
+ * Пропсы компонента отдельного сообщения чата
+ */
 type TMessageItemProps = {
   message: TChatMessage
 }
@@ -24,6 +27,11 @@ const BUBBLE_COLORS: Record<TChatMessage['role'], string> = {
   assistant: 'bg-slate-900/80 border-slate-800',
 }
 
+/**
+ * Компонент отображения отдельного сообщения в чате
+ * Поддерживает гибридный рендеринг: plain text во время стриминга, Markdown после завершения
+ * @param message - объект сообщения для отображения
+ */
 export const MessageItem = memo(({ message }: TMessageItemProps) => {
   const deferredContent = useDeferredValue(message.content)
   const contentToRender = message.isStreaming ? message.content : deferredContent

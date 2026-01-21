@@ -2,6 +2,8 @@
 
 Одностраничное приложение, эмулирующее работу AI‑чата с **потоковой генерацией текста**, с акцентом на **плавность интерфейса**, **отзывчивость при длинной истории** и аккуратную архитектуру по FSD.
 
+**Техническое задание**: [Ссылка на ТЗ](https://docviewer.yandex.ru/view/357104019/?*=uavmRbRvb4a9iS9EjpuLNTZgCR57InVybCI6InlhLWRpc2stcHVibGljOi8vbGJLaDFQeEF6V0JHMGdIVWxxb05jTEJ4a21Kak90cE1MM0NxVExZb3hkV2EyOW9vbWFkZzhFOFUwWFhhazlXYXEvSjZicG1SeU9Kb25UM1ZvWG5EYWc9PSIsInRpdGxlIjoi0YLQtyBmcm9udGVuZC50eHQiLCJub2lmcmFtZSI6ZmFsc2UsInVpZCI6IjM1NzEwNDAxOSIsInRzIjoxNzY4OTg0NDk2ODA4LCJ5dSI6Ijc2NzcyOTMwNDE3NDE1NDEwMDUifQ%3D%3D)
+
 ---
 
 ## Как запустить

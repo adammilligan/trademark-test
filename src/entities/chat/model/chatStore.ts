@@ -12,6 +12,9 @@ import { createTextChunkGenerator, TTextChunkGenerator } from '@shared/lib/textG
 
 import { TChatMessage, TMessageRole } from '@entities/message/model/types'
 
+/**
+ * Состояние чата в Zustand store
+ */
 type TChatState = {
   messages: TChatMessage[]
   isGenerating: boolean
@@ -24,6 +27,10 @@ type TChatState = {
   toggleAutoScroll: (value: boolean) => void
 }
 
+/**
+ * Runtime-состояние для управления потоковой генерацией текста
+ * Вынесено за пределы React-состояния для оптимизации производительности
+ */
 type TGenerationRuntime = {
   intervalId: number | null
   wordsGenerated: number
@@ -44,6 +51,12 @@ const runtime: TGenerationRuntime = {
   isFlushScheduled: false,
 }
 
+/**
+ * Создаёт объект сообщения чата
+ * @param role - роль отправителя (user или assistant)
+ * @param content - текст сообщения
+ * @param isStreaming - флаг, что сообщение находится в процессе стриминга
+ */
 const buildMessage = (
   role: TMessageRole,
   content: string,
@@ -56,9 +69,19 @@ const buildMessage = (
   createdAt: Date.now(),
 })
 
+/**
+ * Создаёт пустое сообщение ассистента для начала стриминга
+ */
 const buildAssistantMessage = (): TChatMessage => buildMessage('assistant', '', true)
 
+/**
+ * Zustand store для управления состоянием чата и потоковой генерацией
+ */
 export const useChatStore = create<TChatState>((set, get) => {
+  /**
+   * Записывает накопленный буфер чанков в сообщение ассистента через Zustand
+   * Используется для батчинга обновлений и предотвращения лишних ререндеров
+   */
   const flushBufferedChunk = () => {
     if (runtime.bufferedChunk === '') {
       return
@@ -108,6 +131,10 @@ export const useChatStore = create<TChatState>((set, get) => {
     })
   }
 
+  /**
+   * Планирует запись буфера в store через requestAnimationFrame
+   * Гарантирует, что flush выполнится только один раз за кадр анимации
+   */
   const scheduleFlush = () => {
     if (runtime.isFlushScheduled) {
       return
@@ -121,6 +148,9 @@ export const useChatStore = create<TChatState>((set, get) => {
     })
   }
 
+  /**
+   * Останавливает интервал генерации чанков
+   */
   const stopInterval = () => {
     if (runtime.intervalId !== null) {
       clearInterval(runtime.intervalId)
@@ -128,6 +158,9 @@ export const useChatStore = create<TChatState>((set, get) => {
     }
   }
 
+  /**
+   * Сбрасывает runtime-состояние генерации в начальное значение
+   */
   const resetRuntime = () => {
     runtime.bufferedChunk = ''
     runtime.isFlushScheduled = false
@@ -137,6 +170,9 @@ export const useChatStore = create<TChatState>((set, get) => {
     runtime.textGenerator = null
   }
 
+  /**
+   * Помечает текущее стримящееся сообщение как завершённое (isStreaming = false)
+   */
   const markStreamStopped = () => {
     set((state) => {
       if (state.messages.length === 0) {
@@ -169,6 +205,14 @@ export const useChatStore = create<TChatState>((set, get) => {
     })
   }
 
+  /**
+   * Полностью останавливает потоковую генерацию:
+   * - останавливает интервал
+   * - записывает последний буфер
+   * - помечает сообщение как завершённое
+   * - сбрасывает runtime
+   * - обновляет состояние store
+   */
   const stopStream = () => {
     const finishedWords = runtime.wordsGenerated
     const finishedTarget = runtime.targetWords
@@ -185,12 +229,23 @@ export const useChatStore = create<TChatState>((set, get) => {
     })
   }
 
+  /**
+   * Выбирает случайное целевое количество слов в заданном диапазоне
+ * @param min - минимальное количество слов
+ * @param max - максимальное количество слов
+ */
   const pickTargetWords = (min: number, max: number): number => {
     const range = max - min
     const randomOffset = Math.floor(Math.random() * (range + 1))
     return min + randomOffset
   }
 
+  /**
+   * Запускает новую сессию потоковой генерации текста
+   * Создаёт новое сообщение ассистента и начинает добавлять в него текст чанками
+   * @param minWords - минимальное целевое количество слов
+   * @param maxWords - максимальное целевое количество слов
+   */
   const startStreamSession = (minWords: number, maxWords: number) => {
     const targetWords = pickTargetWords(minWords, maxWords)
     resetRuntime()
@@ -211,6 +266,10 @@ export const useChatStore = create<TChatState>((set, get) => {
       }
     })
 
+    /**
+     * Генерирует и добавляет следующий чанк текста в буфер
+     * Автоматически останавливает стрим при достижении целевого количества слов
+     */
     const pushChunk = () => {
       const generator = runtime.textGenerator
       if (!generator) {
@@ -236,6 +295,8 @@ export const useChatStore = create<TChatState>((set, get) => {
     // Первую порцию отдаём сразу, чтобы не было пустого сообщения
     pushChunk()
 
+    // Запускаем интервал для регулярной генерации чанков
+
     runtime.intervalId = window.setInterval(() => {
       pushChunk()
     }, STREAM_DELAY_MS)
@@ -247,6 +308,11 @@ export const useChatStore = create<TChatState>((set, get) => {
     isAutoScroll: true,
     generatedWords: 0,
     targetWords: STREAM_TARGET_WORDS_MAX,
+    /**
+     * Добавляет сообщение пользователя и запускает потоковый ответ ассистента
+     * Если во время вызова идёт генерация, она останавливается перед добавлением нового сообщения
+     * @param text - текст сообщения пользователя
+     */
     addUserMessage: (text: string) => {
       const trimmed = text.trim()
 
@@ -264,6 +330,10 @@ export const useChatStore = create<TChatState>((set, get) => {
 
       startStreamSession(USER_TARGET_WORDS_MIN, USER_TARGET_WORDS_MAX)
     },
+    /**
+     * Запускает длинную потоковую генерацию текста (1000-10000 слов)
+     * Используется при нажатии кнопки "Generate"
+     */
     startGeneration: () => {
       if (get().isGenerating) {
         return
@@ -271,12 +341,24 @@ export const useChatStore = create<TChatState>((set, get) => {
 
       startStreamSession(STREAM_TARGET_WORDS_MIN, STREAM_TARGET_WORDS_MAX)
     },
+    /**
+     * Останавливает текущую потоковую генерацию
+     */
     stopGeneration: () => {
       stopStream()
     },
+    /**
+     * Переключает состояние автоскролла чата
+     * @param value - новое значение автоскролла
+     */
     toggleAutoScroll: (value: boolean) => set({ isAutoScroll: value }),
   }
 })
+
+
+
+
+
 
 
 
