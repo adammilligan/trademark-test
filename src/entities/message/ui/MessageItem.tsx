@@ -33,7 +33,7 @@ export const MessageItem = memo(({ message }: TMessageItemProps) => {
       aria-busy={message.isStreaming}
     >
       <div
-        className={`max-w-[80%] rounded-2xl border p-4 shadow-sm ${BUBBLE_COLORS[message.role]}`}
+        className={`max-w-[80%] overflow-hidden rounded-2xl border p-4 shadow-sm ${BUBBLE_COLORS[message.role]}`}
       >
         <header className="mb-2 flex items-center gap-3 text-sm text-slate-400">
           <span
@@ -55,7 +55,7 @@ export const MessageItem = memo(({ message }: TMessageItemProps) => {
             </span>
           )}
         </header>
-        <div className="prose prose-invert max-w-none text-sm leading-relaxed">
+        <div className="prose prose-invert max-w-none break-words text-sm leading-relaxed">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{deferredContent}</ReactMarkdown>
         </div>
       </div>
