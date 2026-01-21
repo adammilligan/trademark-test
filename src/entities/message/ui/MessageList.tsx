@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 
 import { useVirtualizer } from '@tanstack/react-virtual'
 
@@ -24,10 +24,7 @@ export const MessageList = () => {
     overscan: 6,
   })
 
-  const virtualItems = useMemo(
-    () => rowVirtualizer.getVirtualItems(),
-    [rowVirtualizer, messages],
-  )
+  const virtualItems = rowVirtualizer.getVirtualItems()
 
   useEffect(() => {
     if (!isAutoScroll) {
@@ -44,6 +41,17 @@ export const MessageList = () => {
 
     rowVirtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
   }, [generatedWords, isAutoScroll, messages.length, rowVirtualizer])
+
+  useEffect(() => {
+    // При добавлении/удалении сообщений заново измеряем элементы и скроллим к низу,
+    // чтобы новое сообщение не «прилипало» к верху списка.
+    rowVirtualizer.measure()
+    if (isAutoScroll) {
+      requestAnimationFrame(() => {
+        rowVirtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
+      })
+    }
+  }, [messages.length, isAutoScroll, rowVirtualizer])
 
   useEffect(() => {
     // Важно для стриминга: высота последнего сообщения растёт, и виртуализатор
@@ -90,6 +98,7 @@ export const MessageList = () => {
                 ref={rowVirtualizer.measureElement}
                 className="absolute left-0 top-0 w-full px-2"
                 style={{
+                  height: `${virtualRow.size}px`,
                   transform: `translateY(${virtualRow.start}px)`,
                   width: '100%',
                 }}

@@ -3,7 +3,7 @@ export const INSTANT_TARGET_WORDS_MAX = 1_000
 
 export const STREAM_TARGET_WORDS_MIN = 5_000
 export const STREAM_TARGET_WORDS_MAX = 10_000
-export const STREAM_CHUNK_SIZE = 24
+export const STREAM_CHUNK_SIZE = 1
 export const STREAM_DELAY_MS = 18
 export const MAX_HISTORY_ITEMS = 120
 export const AUTO_SCROLL_OFFSET = 64

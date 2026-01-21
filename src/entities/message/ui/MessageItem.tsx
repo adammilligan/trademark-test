@@ -26,6 +26,7 @@ const BUBBLE_COLORS: Record<TChatMessage['role'], string> = {
 
 export const MessageItem = memo(({ message }: TMessageItemProps) => {
   const deferredContent = useDeferredValue(message.content)
+  const contentToRender = message.isStreaming ? message.content : deferredContent
 
   return (
     <article
@@ -47,17 +48,19 @@ export const MessageItem = memo(({ message }: TMessageItemProps) => {
               {new Date(message.createdAt).toLocaleTimeString()}
             </p>
           </div>
-          {message.isStreaming ? (
-            <span className="ml-auto text-xs text-emerald-400">Streaming…</span>
-          ) : (
-            <span className="ml-auto text-xs text-slate-500">
-              {message.role === 'assistant' ? 'Ответ' : 'Сообщение'}
-            </span>
-          )}
+          <span className="ml-auto text-xs text-slate-500">
+            {message.role === 'assistant' ? 'Ответ' : 'Сообщение'}
+          </span>
         </header>
-        <div className="prose prose-invert max-w-none break-words text-sm leading-relaxed">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{deferredContent}</ReactMarkdown>
-        </div>
+        {message.isStreaming ? (
+          <pre className="max-w-full whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-100">
+            {contentToRender}
+          </pre>
+        ) : (
+          <div className="prose prose-invert max-w-none break-words text-sm leading-relaxed">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{contentToRender}</ReactMarkdown>
+          </div>
+        )}
       </div>
     </article>
   )

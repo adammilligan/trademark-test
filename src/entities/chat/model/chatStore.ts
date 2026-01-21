@@ -3,7 +3,6 @@ import { create } from 'zustand'
 import {
   INSTANT_TARGET_WORDS_MAX,
   INSTANT_TARGET_WORDS_MIN,
-  MAX_HISTORY_ITEMS,
   STREAM_CHUNK_SIZE,
   STREAM_DELAY_MS,
   STREAM_TARGET_WORDS_MAX,
@@ -113,7 +112,9 @@ export const useChatStore = create<TChatState>((set, get) => {
 
       const updatedMessage: TChatMessage = {
         ...message,
-        content: `${message.content} ${chunk}`.trim(),
+        // Важно: чанки уже содержат нужные пробелы/переносы/markdown fences.
+        // Нельзя добавлять лишние пробелы или trim(), иначе ломаются code blocks и разметка.
+        content: `${message.content}${chunk}`,
       }
 
       nextMessages[messageIndex] = updatedMessage
@@ -243,7 +244,7 @@ export const useChatStore = create<TChatState>((set, get) => {
       }
     })
 
-    runtime.intervalId = window.setInterval(() => {
+    const pushChunk = () => {
       const generator = runtime.textGenerator
       if (!generator) {
         stopStream()
@@ -263,6 +264,13 @@ export const useChatStore = create<TChatState>((set, get) => {
       if (runtime.wordsGenerated >= runtime.targetWords) {
         stopStream()
       }
+    }
+
+    // Первую порцию отдаём сразу, чтобы не было пустого сообщения
+    pushChunk()
+
+    runtime.intervalId = window.setInterval(() => {
+      pushChunk()
     }, STREAM_DELAY_MS)
   }
 
@@ -307,7 +315,7 @@ export const useChatStore = create<TChatState>((set, get) => {
         }
       })
 
-      startStreamSession(instantWords, 1)
+      startStreamSession(instantWords, STREAM_CHUNK_SIZE)
     },
     startAssistantStream: () => {
       const target = pickTargetWords()
